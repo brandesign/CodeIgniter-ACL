@@ -79,19 +79,21 @@ class Acl_auth
 			return false;
 		}
 
+		$insert = array();
+
 		foreach( $data as $field => $value )
 		{
-			if( ! $this->User_model->field_exists( $field ) )
-			{
-				unset( $data[$field] );
-			}
 			if( $field == $this->config->item( 'password_field', 'acl_auth' ) )
 			{
-				$data[$field] = $this->phpass->hash( $value );
+				$value = $this->phpass->hash( $value );
+			}
+			if( $this->User_model->field_exists( $field ) )
+			{
+				$insert[$field] = $value;
 			}
 		}
 
-		if( $id = $this->User_model->insert( $data ) )
+		if( $id = $this->User_model->insert( $insert ) )
 		{
 			$this->login( $data['email'], $data['password'] );
 			return true;
