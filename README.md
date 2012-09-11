@@ -11,30 +11,42 @@ Check out the setup.sql file to understand the table structure.
 Usage
 -----
 
-	$this->load->library('acl_auth');
+```php
+$this->load->library('acl_auth');
+```
 
 ### Register a user
 
-	$data = array( 'name' => 'testuser', 'password' => 'testpassword', 'extra_field' => 'value' );
-	$success = $this->acl_auth->register( $data );
+```php
+$data = array( 'name' => 'testuser', 'password' => 'testpassword', 'extra_field' => 'value' );
+$success = $this->acl_auth->register( $data );
+```
 
 ### Login
 
-	$success = $this->acl_auth->login( $user, $password );
+```php
+$session_data = array('name', 'email');
+$success = $this->acl_auth->login( $user, $password, $session_data );
+```
+This logs the user in and writes user_name and user_email into session.
 
 ### Logout
 
-	$success = $this->acl_auth->logout();
+```php
+$success = $this->acl_auth->logout();
+```
 
 ### Restrict a controller or method for users having a role
 
-	class Test extends CI_Controller
+```php
+class Test extends CI_Controller
+{
+	function __construct()
 	{
-		function __construct()
-		{
-			parent::__construct();
+		parent::__construct();
 
-			// only allow users with 'admin' role to access all methods in this controller
-			$this->acl_auth->restrict_access('admin');
-		}
+		// only allow users with 'admin' role to access all methods in this controller
+		$this->acl_auth->restrict_access('admin');
 	}
+}
+```

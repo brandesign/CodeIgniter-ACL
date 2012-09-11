@@ -113,7 +113,7 @@ class Acl_auth
 	 * @param string
 	 * @return bool
 	 **/
-	public function login( $user, $password )
+	public function login( $user, $password, $session_data = array() )
 	{
 		$identity_field = $this->config->item('identity_field', 'acl_auth');
 		$count = $this->User_model->count_by( $identity_field, $user );
@@ -132,12 +132,17 @@ class Acl_auth
 		}
 		else
 		{
-			$session_data = array(
-				'user_id' 	=> $user->id
+			$session = array(
+				'user_id'	=> $user->id
 				,'logged_in'=> TRUE
 			);
 
-			$this->session->set_userdata( $session_data );
+			foreach( $session_data as $key )
+			{
+				$session['user_'.$key] = ( $user->$key ) ? $user->$key : NULL;
+			}
+
+			$this->session->set_userdata( $session );
 			return true;
 		}
 		return false;
