@@ -615,13 +615,29 @@ class MY_Model extends CI_Model
      */
     public function created_at($row)
     {
-        $row['created_at'] = date('Y-m-d H:i:s');
+        if (is_object($row))
+        {
+            $row->created_at = date('Y-m-d H:i:s');
+        }
+        else
+        {
+            $row['created_at'] = date('Y-m-d H:i:s');
+        }
+        
         return $row;
     }
 
     public function updated_at($row)
     {
-        $row['updated_at'] = date('Y-m-d H:i:s');
+        if (is_object($row))
+        {
+            $row->updated_at = date('Y-m-d H:i:s');
+        }
+        else
+        {
+            $row['updated_at'] = date('Y-m-d H:i:s');
+        }
+
         return $row;
     }
 
@@ -784,7 +800,7 @@ class MY_Model extends CI_Model
     /**
      * Set WHERE parameters, cleverly
      */
-    private function _set_where($params)
+    protected function _set_where($params)
     {
         if (count($params) == 1)
         {
@@ -799,7 +815,7 @@ class MY_Model extends CI_Model
     /**
      * Return the method name for the current return type
      */
-    private function _return_type($multi = FALSE)
+    protected function _return_type($multi = FALSE)
     {
         $method = ($multi) ? 'result' : 'row';
         return $this->_temporary_return_type == 'array' ? $method . '_array' : $method;
