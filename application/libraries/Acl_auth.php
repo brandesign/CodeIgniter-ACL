@@ -175,8 +175,12 @@ class Acl_auth
 	 * @param string
 	 * @return bool
 	 **/
-	public function has_role( $user_id, $role )
+	public function has_role( $role, $user_id = NULL )
 	{
+		if( is_null( $user_id ) )
+		{
+			$user_id = $this->session->userdata('user_id');
+		}
 		return (bool) $this->User_model->has_role( $user_id, $role );
 	}
 
@@ -206,8 +210,7 @@ class Acl_auth
 			default:
 				if( $this->logged_in() )
 				{
-					$user_id  = $this->session->userdata['user_id'];
-					$has_role = $this->has_role( $user_id, $role );
+					$has_role = $this->has_role( $role );
 				}
 				break;
 		}
