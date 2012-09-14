@@ -37,16 +37,16 @@ class Acl_auth
 	 *
 	 * @var array
 	 */
-	protected $errors;
+	private $_errors = array();
+	private $_config;
 
 	public function __construct()
 	{
 		$this->load->config('acl_auth', TRUE);
+		$this->_config = $this->config->item('acl_auth');
 		$this->load->library( array( 'email', 'session', 'phpass' ) );
-		//$this->load->helper('cookie');
 		$this->load->model('User_model');
-
-		$this->errors = array();
+		$this->lang->load('acl_auth');
 	}
 
 	/**
@@ -73,7 +73,7 @@ class Acl_auth
 	 **/
 	public function register( $data )
 	{
-		if( ! array_key_exists( $this->config->item( 'identity_field', 'acl_auth' ), $data ) OR ! array_key_exists( $this->config->item( 'password_field', 'acl_auth' ), $data ) )
+		if( ! array_key_exists( $this->_config['identity_field'], $data ) OR ! array_key_exists( $this->_config['password_field'], $data ) )
 		{
 			$this->set_error( 'register_failed' );
 			return false;
@@ -83,7 +83,7 @@ class Acl_auth
 
 		foreach( $data as $field => $value )
 		{
-			if( $field == $this->config->item( 'password_field', 'acl_auth' ) )
+			if( $field == $this->_config['password_field'] )
 			{
 				$value = $this->phpass->hash( $value );
 			}
@@ -113,39 +113,28 @@ class Acl_auth
 	 * @param string
 	 * @return bool
 	 **/
-	public function login( $user, $password, $session_data = array() )
+	public function login( $identity, $password, $session_data = array() )
 	{
-		$identity_field = $this->config->item('identity_field', 'acl_auth');
-		$count = $this->User_model->count_by( $identity_field, $user );
-		if( $count > 1 )
-		{
-			$this->set_error( 'error_multiple_accounts' );
-			return false;
-		}
+		$user = $this->User_model->get_user( $identity );
 
-		$user = $this->User_model->get_by( $identity_field, $user );
-
-		if( ! $this->phpass->check( $password, $user->password ) )
+		if( ! $user OR ! $this->phpass->check( $password, $user->password ) )
 		{
 			$this->set_error( 'login_failed' );
 			return false;
 		}
-		else
+	
+		$session = array(
+			'user_id'	=> $user->id
+			,'logged_in'=> TRUE
+		);
+
+		foreach( $session_data as $key )
 		{
-			$session = array(
-				'user_id'	=> $user->id
-				,'logged_in'=> TRUE
-			);
-
-			foreach( $session_data as $key )
-			{
-				$session['user_'.$key] = ( $user->$key ) ? $user->$key : NULL;
-			}
-
-			$this->session->set_userdata( $session );
-			return true;
+			$session['user_'.$key] = ( $user->$key ) ? $user->$key : NULL;
 		}
-		return false;
+
+		$this->session->set_userdata( $session );
+		return true;
 	}
 
 	/**
@@ -170,6 +159,142 @@ class Acl_auth
 	public function logged_in()
 	{
 		return (bool) $this->session->userdata('logged_in');
+	}
+
+	/**
+	 * Send password reset
+	 *
+	 * @access public
+	 * @param string
+	 * @return bool
+	 **/
+	public function send_password_reset( $identity )
+	{
+		$user = $this->User_model->get_user( $identity );
+
+		if( ! $user )
+		{
+			$this->set_error( 'reset_user_not_found' );
+			return false;
+		}
+
+		$reset_code = $this->_reset_code();
+		$update = array(
+			'reset_code' => $reset_code
+			,'reset_time'=>	time()
+		);
+
+		$this->User_model->update( $user->id, $update );
+
+		$data = array(
+			'user'	=> $user
+			,'reset_code' => $reset_code
+		);
+
+		$message = $this->load->view( $this->_config['reset_template'], $data, TRUE );
+		
+		$this->email->from( $this->_config['admin_mail'], $this->_config['admin_name'] );
+        $this->email->to( $user->email );
+
+        $this->email->subject( $this->_config['reset_subject'] );
+        $this->email->message( $message );
+
+        return ( $this->email->send() ) ? true : false;
+
+        //echo $this->email->print_debugger();
+	}
+
+	/**
+	 * Check if reset token is valid
+	 *
+	 * @access public
+	 * @param string
+	 * @param string
+	 * @return bool
+	 **/
+	public function check_reset_token( $identity, $token )
+	{
+		$user = $this->User_model->get_user( $identity );
+		if( !$user )
+		{
+			$this->set_error( 'reset_user_not_found' );
+			return false;
+		}
+
+		if( ( time() - $user->reset_time ) > 1200 )
+		{
+			$this->set_error( 'reset_token_expired' );
+			return false;
+		}
+
+		if( $user->reset_code === $token )
+		{
+			return true;
+		}
+		$this->set_error( 'reset_token_check_failed' );
+		return false;
+	}
+
+	/**
+	 * Confirm password reset
+	 *
+	 * @access public
+	 * @param string
+	 * @param string
+	 * @param string
+	 * @return bool
+	 **/
+	public function set_new_password( $identity, $token, $newpass )
+	{
+		$user = $this->User_model->get_user( $identity );
+		if( ! $user OR ! $this->check_reset_token( $identity, $token ) )
+		{
+			$this->set_error( 'reset_user_not_found' );
+			return false;
+		}
+
+		$data = array(
+			'reset_code' => NULL
+			,'reset_time'=> NULL
+			,$this->_config['password_field'] => $this->phpass->hash( $newpass )
+		);
+
+		if( $this->User_model->update( $user->id, $data ) )
+		{
+			$session = array();
+			foreach( $user as $k => $v )
+			{
+				$session[] = $k;
+			}
+			$this->login( $identity, $newpass, $session );
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	/**
+	 * generate reset code
+	 *
+	 * @access private
+	 * @return string
+	 **/
+	private function _reset_code()
+	{
+		$ret = '';
+		for( $x = 0; $x < 32; $x++ )
+		{
+			$chars = array(
+				chr( mt_rand( 48, 57 ) )
+				,chr( mt_rand( 64, 90 ) )
+				,chr( mt_rand( 97, 122 ) )
+			);
+        	//$ret .= chr( mt_rand( 0, 255 ) );
+        	$ret .= $chars[array_rand($chars)];
+    	}
+    	return $ret;
 	}
 
 	/**
@@ -219,13 +344,12 @@ class Acl_auth
 				}
 				break;
 		}
-
+		
 		if( ! $has_role )
 		{
 			if( ! $this->logged_in() )
 			{
-				set_status_header( 401 );
-				redirect('/auth');
+				redirect('auth');
 			}
 			else
 			{
@@ -243,7 +367,7 @@ class Acl_auth
 	 **/
 	private function set_error( $error )
 	{
-		$this->errors[] = $error;
+		$this->_errors[] = $error;
 	}
 
 	/**
@@ -254,6 +378,10 @@ class Acl_auth
 	 **/
 	public function errors()
 	{
-		return $this->errors;
+		foreach ( $this->_errors as $key => $error )
+		{
+			$this->_errors[$key] = $this->lang->line( $error ) ? $this->lang->line( $error ) : '##' . $error . '##';
+		}
+		return $this->_errors;
 	}
 }
