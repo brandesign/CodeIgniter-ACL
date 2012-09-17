@@ -8,3 +8,9 @@ $config['admin_mail'] 	= '';
 $config['admin_name']	= '';
 $config['reset_subject'] = '';
 $config['reset_template'] = '';
+
+//Own 401 Page - define here
+$config['401_override'] = '';
+
+//Own Login Page?
+$config['401_login_page'] = '';

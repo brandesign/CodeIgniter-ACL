@@ -122,7 +122,7 @@ class Acl_auth
 			$this->set_error( 'login_failed' );
 			return false;
 		}
-	
+
 		$session = array(
 			'user_id'	=> $user->id
 			,'logged_in'=> TRUE
@@ -192,7 +192,7 @@ class Acl_auth
 		);
 
 		$message = $this->load->view( $this->_config['reset_template'], $data, TRUE );
-		
+
 		$this->email->from( $this->_config['admin_mail'], $this->_config['admin_name'] );
         $this->email->to( $user->email );
 
@@ -349,11 +349,31 @@ class Acl_auth
 		{
 			if( ! $this->logged_in() )
 			{
-				redirect('auth');
+				//THIS IS DEFAULT
+				if( strlen($this->_config['401_login_page']) > 0 )
+				{
+					redirect( $this->_config['401_login_page'] );
+				}
+				else if( strlen($this->_config['401_override']) > 0 )
+				{
+					redirect( $this->_config['401_override'] );
+				}
+				else
+				{
+					show_error('Unauthorized', 401 );
+				}
 			}
 			else
 			{
-				show_error('Unauthorized', 401 );
+				//THIS IS DEFAULT
+				if( strlen($this->_config['401_override']) > 0 )
+				{
+					redirect( $this->_config['401_override'] );
+				}
+				else
+				{
+					show_error('Unauthorized', 401 );
+				}
 			}
 		}
 	}
