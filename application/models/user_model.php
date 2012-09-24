@@ -13,4 +13,18 @@ class User_model extends MY_Model
     {
         return $this->db->field_exists( $field, $this->config->item('user_table', 'acl_auth') );
     }
+
+    public function get_user( $identity )
+    {
+        if( ! $identity )
+        {
+            return false;
+        }
+        return $this->get_by( $this->config->item( 'identity_field', 'acl_auth' ), $identity );
+    }
+
+    public function check_token( $token )
+    {
+        return ( $token === $this->reset_code );
+    }
 }
