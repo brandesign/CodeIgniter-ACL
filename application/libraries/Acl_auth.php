@@ -45,8 +45,13 @@ class Acl_auth
 		$this->load->config('acl_auth', TRUE);
 		$this->_config = $this->config->item('acl_auth');
 		$this->load->library( array( 'email', 'session', 'phpass' ) );
+		$this->load->helper('cookie');
 		$this->load->model('User_model');
 		$this->lang->load('acl_auth');
+		if( ! $this->logged_in() && get_cookie('identity') && get_cookie('remember_code') )
+		{
+			$this->login_remembered();
+		}
 	}
 
 	/**
@@ -95,7 +100,7 @@ class Acl_auth
 
 		if( $id = $this->User_model->insert( $insert ) )
 		{
-			$this->login( $data['email'], $data['password'] );
+			$this->login( $data['email'], $data['password'], TRUE );
 			return true;
 		}
 		else
@@ -113,7 +118,7 @@ class Acl_auth
 	 * @param string
 	 * @return bool
 	 **/
-	public function login( $identity, $password, $session_data = array() )
+	public function login( $identity, $password, $remember = FALSE, $session_data = array() )
 	{
 		$user = $this->User_model->get_user( $identity );
 
@@ -126,6 +131,7 @@ class Acl_auth
 		$session = array(
 			'user_id'	=> $user->id
 			,'logged_in'=> TRUE
+			,'user_'.$this->_config['identity_field'] => $user->{$this->_config['identity_field']}
 		);
 
 		foreach( $session_data as $key )
@@ -134,7 +140,41 @@ class Acl_auth
 		}
 
 		$this->session->set_userdata( $session );
+
+		if( $remember )
+		{
+			$remember_code = $this->phpass->hash(uniqid());
+			$this->User_model->update( $user->id, array('remember_code' => $remember_code) );
+			$expire = (60*60*24*365*2);
+			set_cookie(array(
+			    'name'   => 'identity',
+			    'value'  => $identity,
+			    'expire' => $expire
+			));
+
+			set_cookie(array(
+			    'name'   => 'remember_code',
+			    'value'  => $remember_code,
+			    'expire' => $expire
+			));
+		}
 		return true;
+	}
+
+	private function login_remembered()
+	{
+		$identity = get_cookie('identity');
+		$code 	  = get_cookie('remember_code');
+		$user = $this->User_model->get_by( array($this->_config['identity_field'] => $identity) );
+		if( $user && $user->remember_code === $code )
+		{
+			$session = array(
+				'user_id'	=> $user->id
+				,'logged_in'=> TRUE
+				,'user_'.$this->_config['identity_field'] => {$user->$this->_config['identity_field']}
+			);
+			$this->session->set_userdata($session);
+		}
 	}
 
 	/**
@@ -146,6 +186,8 @@ class Acl_auth
 	public function logout()
 	{
 		$this->session->sess_destroy();
+		delete_cookie('identity');
+		delete_cookie('remember_code');
 		$this->session->sess_create();
 		return( TRUE === $this->session->userdata('logged_in') ) ? false : true;
 	}

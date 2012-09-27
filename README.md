@@ -3,6 +3,8 @@ CodeIgniter-ACL
 
 A small ACL library for CodeIgniter Framework using Jamie Rumbelow's MY_Model (http://github.com/jamierumbelow/codeigniter-base-model)
 
+#### This library should not be used in production environment. You can help to make it stable!
+
 Installation
 ------------
 
