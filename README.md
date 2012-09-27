@@ -27,10 +27,14 @@ $success = $this->acl_auth->register( $data );
 ### Login
 
 ```php
-$session_data = array('name', 'email');
-$success = $this->acl_auth->login( $user, $password, $session_data );
+// Simple login
+$success = $this->acl_auth->login( $user, $password );
+
+// This logs the user in and writes user_name, user_email and user_phone into session. Also sets a cookie to remember the user.
+$remember = TRUE;
+$session_data = array('name', 'email', 'phone');
+$success = $this->acl_auth->login( $user, $password, $remember, $session_data );
 ```
-This logs the user in and writes user_name and user_email into session.
 
 ### Logout
 

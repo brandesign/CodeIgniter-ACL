@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(200) NOT NULL,
+  `reset_code` varchar(32) NULL,
+  `reset_time` int(11) NULL,
+  `remember_code` varchar(255) NULL,
   PRIMARY KEY (`id`)
 ) DEFAULT CHARSET=utf8 ;
 
