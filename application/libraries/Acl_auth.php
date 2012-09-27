@@ -46,7 +46,7 @@ class Acl_auth
 		$this->_config = $this->config->item('acl_auth');
 		$this->load->library( array( 'email', 'session', 'phpass' ) );
 		$this->load->helper('cookie');
-		$this->load->model('User_model');
+		$this->load->model('user_model');
 		$this->lang->load('acl_auth');
 		if( ! $this->logged_in() && get_cookie('identity') && get_cookie('remember_code') )
 		{
@@ -92,13 +92,13 @@ class Acl_auth
 			{
 				$value = $this->phpass->hash( $value );
 			}
-			if( $this->User_model->field_exists( $field ) )
+			if( $this->user_model->field_exists( $field ) )
 			{
 				$insert[$field] = $value;
 			}
 		}
 
-		if( $id = $this->User_model->insert( $insert ) )
+		if( $id = $this->user_model->insert( $insert ) )
 		{
 			$this->login( $data['email'], $data['password'], TRUE );
 			return true;
@@ -120,7 +120,7 @@ class Acl_auth
 	 **/
 	public function login( $identity, $password, $remember = FALSE, $session_data = array() )
 	{
-		$user = $this->User_model->get_user( $identity );
+		$user = $this->user_model->get_user( $identity );
 
 		if( ! $user OR ! $this->phpass->check( $password, $user->password ) )
 		{
@@ -144,7 +144,7 @@ class Acl_auth
 		if( $remember )
 		{
 			$remember_code = $this->phpass->hash(uniqid());
-			$this->User_model->update( $user->id, array('remember_code' => $remember_code) );
+			$this->user_model->update( $user->id, array('remember_code' => $remember_code) );
 			$expire = (60*60*24*365*2);
 			set_cookie(array(
 			    'name'   => 'identity',
@@ -165,13 +165,13 @@ class Acl_auth
 	{
 		$identity = get_cookie('identity');
 		$code 	  = get_cookie('remember_code');
-		$user = $this->User_model->get_by( array($this->_config['identity_field'] => $identity) );
+		$user = $this->user_model->get_by( array($this->_config['identity_field'] => $identity) );
 		if( $user && $user->remember_code === $code )
 		{
 			$session = array(
 				'user_id'	=> $user->id
 				,'logged_in'=> TRUE
-				,'user_'.$this->_config['identity_field'] => {$user->$this->_config['identity_field']}
+				,'user_'.$this->_config['identity_field'] => $user->{$this->_config['identity_field']}
 			);
 			$this->session->set_userdata($session);
 		}
@@ -212,7 +212,7 @@ class Acl_auth
 	 **/
 	public function send_password_reset( $identity )
 	{
-		$user = $this->User_model->get_user( $identity );
+		$user = $this->user_model->get_user( $identity );
 
 		if( ! $user )
 		{
@@ -226,7 +226,7 @@ class Acl_auth
 			,'reset_time'=>	time()
 		);
 
-		$this->User_model->update( $user->id, $update );
+		$this->user_model->update( $user->id, $update );
 
 		$data = array(
 			'user'	=> $user
@@ -256,7 +256,7 @@ class Acl_auth
 	 **/
 	public function check_reset_token( $identity, $token )
 	{
-		$user = $this->User_model->get_user( $identity );
+		$user = $this->user_model->get_user( $identity );
 		if( !$user )
 		{
 			$this->set_error( 'reset_user_not_found' );
@@ -288,7 +288,7 @@ class Acl_auth
 	 **/
 	public function set_new_password( $identity, $token, $newpass )
 	{
-		$user = $this->User_model->get_user( $identity );
+		$user = $this->user_model->get_user( $identity );
 		if( ! $user OR ! $this->check_reset_token( $identity, $token ) )
 		{
 			$this->set_error( 'reset_user_not_found' );
@@ -301,7 +301,7 @@ class Acl_auth
 			,$this->_config['password_field'] => $this->phpass->hash( $newpass )
 		);
 
-		if( $this->User_model->update( $user->id, $data ) )
+		if( $this->user_model->update( $user->id, $data ) )
 		{
 			$session = array();
 			foreach( $user as $k => $v )
@@ -353,7 +353,7 @@ class Acl_auth
 		{
 			$user_id = $this->session->userdata('user_id');
 		}
-		return (bool) $this->User_model->has_role( $user_id, $role );
+		return (bool) $this->user_model->has_role( $user_id, $role );
 	}
 
 	/**
