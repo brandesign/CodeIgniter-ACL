@@ -46,7 +46,7 @@ class Acl_auth
 		$this->_config = $this->config->item('acl_auth');
 		$this->load->library( array( 'email', 'session', 'phpass' ) );
 		$this->load->helper('cookie');
-		$this->load->model('user_model');
+		$this->load->model( $this->_config['user_model'], 'user_model' );
 		$this->lang->load('acl_auth');
 		if( ! $this->logged_in() && get_cookie('identity') && get_cookie('remember_code') )
 		{
